@@ -2,9 +2,24 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# User database (temporary for the example)
+# User and channel data
 users = []
 channels = []
+messages = []
+
+# Helper function to authenticate users
+def authenticate(username, password):
+    return next((user for user in users if user['username'] == username and user['password'] == password), None)
+
+# Helper function to authenticate users and check if they are in the specified channel
+def authenticate_channel(username, password, channel_name):
+    user = authenticate(username, password)
+    channel = next((channel for channel in channels if channel['channel_name'] == channel_name), None)
+
+    if user and channel and username in channel['users']:
+        return True
+
+    return False
 
 # Endpoint for user registration
 @app.route('/register', methods=['POST'])
@@ -83,5 +98,46 @@ def join_channel():
 
     return jsonify({'message': f'{username} joined {channel_name}'}), 200
 
+# Endpoint for sending a new message
+@app.route('/send_message', methods=['POST'])
+def send_message():
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    channel_name = data.get('channel_name')
+    content = data.get('content')
+
+    if not username or not password or not channel_name or not content:
+        return jsonify({'error': 'Username, password, channel name, and content are required'}), 400
+
+    # Authenticate user and check if they are in the specified channel
+    if not authenticate_channel(username, password, channel_name):
+        return jsonify({'error': 'Authentication failed or user not in the channel'}), 401
+
+    # Store the message
+    messages.append({'username': username, 'channel_name': channel_name, 'content': content})
+
+    return jsonify({'message': 'Message sent successfully'}), 200
+
+# Endpoint for retrieving messages
+@app.route('/get_messages', methods=['GET'])
+def get_messages():
+    username = request.args.get('username')
+    password = request.args.get('password')
+    channel_name = request.args.get('channel_name')
+
+    if not username or not password or not channel_name:
+        return jsonify({'error': 'Username, password, and channel name are required'}), 400
+
+    # Authenticate user and check if they are in the specified channel
+    if not authenticate_channel(username, password, channel_name):
+        return jsonify({'error': 'Authentication failed or user not in the channel'}), 401
+
+    # Retrieve messages for the specified channel
+    channel_messages = [message for message in messages if message['channel_name'] == channel_name]
+
+    return jsonify({'messages': channel_messages}), 200
+
 if __name__ == '__main__':
     app.run(debug=True)
+
