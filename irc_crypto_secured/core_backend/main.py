@@ -21,6 +21,11 @@ def authenticate_channel(username, password, channel_name):
 
     return False
 
+# Main landing page 
+@app.route('/')
+def homepage():
+    return jsonify({'message': 'server is working'})
+
 # Endpoint for user registration
 @app.route('/register', methods=['POST'])
 def register():
@@ -129,29 +134,36 @@ def send_message():
 
         # Store the message
         messages.append({'username': username, 'channel_name': channel_name, 'content': content})
+        
+        with open('messages.json', 'w') as file:
+            file.write(jsonify(messages))
 
         return jsonify({'message': 'Message sent successfully'}), 200
     else:
         return jsonify({'message': 'Method not allowed'}), 405
 
 # Endpoint for retrieving messages
-@app.route('/get_messages', methods=['GET'])
+@app.route('/get_messages', methods=['POST'])
 def get_messages():
-    username = request.args.get('username')
-    password = request.args.get('password')
-    channel_name = request.args.get('channel_name')
+    if request.method == 'POST':
+        data = request.json
+        username = data.get('username')
+        password = data.get('password')
+        channel_name = data.get('channel_name')
 
-    if not username or not password or not channel_name:
-        return jsonify({'error': 'Username, password, and channel name are required'}), 400
+        if not username or not password or not channel_name:
+            return jsonify({'error': 'Username, password, and channel name are required'}), 400
 
-    # Authenticate user and check if they are in the specified channel
-    if not authenticate_channel(username, password, channel_name):
-        return jsonify({'error': 'Authentication failed or user not in the channel'}), 401
+        # Authenticate user and check if they are in the specified channel
+        if not authenticate_channel(username, password, channel_name):
+            return jsonify({'error': 'Authentication failed or user not in the channel'}), 401
 
-    # Retrieve messages for the specified channel
-    channel_messages = [message for message in messages if message['channel_name'] == channel_name]
-
-    return jsonify({'messages': channel_messages}), 200
+        # Retrieve messages for the specified channel
+        channel_messages = [message for message in messages if message['channel_name'] == channel_name]
+    
+        return jsonify({'messages': channel_messages}), 200
+    else:
+        return jsonify({'message': 'Method not allowed'})
 
 if __name__ == '__main__':
     app.run(debug=True)
