@@ -1,4 +1,7 @@
 from flask import Flask, request, jsonify
+import json
+import hashlib
+import time 
 
 app = Flask(__name__)
 
@@ -6,6 +9,52 @@ app = Flask(__name__)
 users = []
 channels = []
 messages = []
+
+class Block:
+    def __init__(self, index, previous_hash, timestamp, data, hash):
+        self.index = index
+        self.previous_hash = previous_hash
+        self.timestamp = timestamp
+        self.data = data
+        self.hash = hash
+
+def calculate_hash(index, previous_hash, timestamp, data):
+    value = str(index) + str(previous_hash) + str(timestamp) + str(data)
+    return hashlib.sha256(value.encode()).hexdigest()
+
+def create_genesis_block():
+    # Manually create the first block (genesis block)
+    return Block(0, "0", time.time(), "Genesis Block", calculate_hash(0, "0", time.time(), "Genesis Block"))
+
+def create_new_block(index, previous_hash, data):
+    timestamp = time.time()
+    hash = calculate_hash(index, previous_hash, timestamp, data)
+    return Block(index, previous_hash, timestamp, data, hash)
+
+class Blockchain:
+    def __init__(self):
+        self.chain = [create_genesis_block()]
+        self.difficulty = 3  # Number of leading zeros required in the hash
+
+    def add_block(self, data):
+        index = len(self.chain)
+        previous_hash = self.chain[-1].hash
+        new_block = create_new_block(index, previous_hash, data)
+        proof = self.proof_of_work(new_block)
+        self.chain.append(new_block)
+
+    def proof_of_work(self, block):
+        block.nonce = 0
+        computed_hash = calculate_hash(block.index, block.previous_hash, block.timestamp, block.data + str(block.nonce))
+
+        while not computed_hash.startswith('0' * self.difficulty):
+            block.nonce += 1
+            computed_hash = calculate_hash(block.index, block.previous_hash, block.timestamp, block.data + str(block.nonce))
+
+        return computed_hash
+
+    def add_message_to_blockchain(self, message):
+        self.add_block(message)
 
 # Helper function to authenticate users
 def authenticate(username, password):
@@ -25,6 +74,15 @@ def authenticate_channel(username, password, channel_name):
 @app.route('/')
 def homepage():
     return jsonify({'message': 'server is working'})
+
+# Get users in the account 
+@app.route('/list_users')
+def user_list():
+    return jsonify(users)
+
+# Get channel names
+@app.route('/list_channel')
+    return jsonify(channels)
 
 # Endpoint for user registration
 @app.route('/register', methods=['POST'])
@@ -134,9 +192,6 @@ def send_message():
 
         # Store the message
         messages.append({'username': username, 'channel_name': channel_name, 'content': content})
-        
-        with open('messages.json', 'w') as file:
-            file.write(jsonify(messages))
 
         return jsonify({'message': 'Message sent successfully'}), 200
     else:
@@ -165,6 +220,18 @@ def get_messages():
     else:
         return jsonify({'message': 'Method not allowed'})
 
+
 if __name__ == '__main__':
     app.run(debug=True)
+    
+    blockchain = Blockchain()
+    for message in new_messages:
+        blockchain.add_message_to_blockchain(message)
+
+    # Print the updated blockchain
+    for block in blockchain.chain:
+        print(f"Index: {block.index}, Hash: {block.hash}, Previous Hash: {block.previous_hash}, Timestamp: {block.timestamp}, Data: {block.data}")
+
+
+
 
