@@ -41,7 +41,7 @@ def create_new_block(index, previous_hash, data):
 class Blockchain:
     def __init__(self):
         self.chain = [create_genesis_block()]
-        self.difficulty = 3  # Number of leading zeros required in the hash
+        self.difficulty = 4  # Number of leading zeros required in the hash
 
     def add_block(self, data):
         index = len(self.chain)
@@ -57,7 +57,7 @@ class Blockchain:
         while not computed_hash.startswith('0' * self.difficulty):
             block.nonce += 1
             computed_hash = calculate_hash(block.index, block.previous_hash, block.timestamp, str(block.data) + str(block.nonce))
-
+            # print(computed_hash)
         return computed_hash
 
     def add_message_to_blockchain(self, message):
@@ -228,8 +228,13 @@ def get_messages():
             return jsonify({'error': 'Authentication failed or user not in the channel'}), 401
 
         # Retrieve messages for the specified channel
-        channel_messages = [message for message in messages if message['channel_name'] == channel_name]
-    
+        # channel_messages = [message for message in messages if message['channel_name'] == channel_name]
+        channel_messages = []
+        for block in blockchain.chain:
+            if isinstance(block.data, dict):
+                print(block.data)
+                channel_messages.append(block.data)
+
         return jsonify({'messages': channel_messages}), 200
     else:
         return jsonify({'message': 'Method not allowed'})
