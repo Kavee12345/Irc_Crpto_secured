@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 import json
 import hashlib
-import time 
+import time
 
 app = Flask(__name__)
 
@@ -29,6 +29,13 @@ def create_genesis_block():
 def create_new_block(index, previous_hash, data):
     timestamp = time.time()
     hash = calculate_hash(index, previous_hash, timestamp, data)
+    print("------------------------------------------------------")
+    print(index)
+    print(previous_hash)
+    print(timestamp)
+    print(data)
+    print(hash)
+    print("------------------------------------------------------")
     return Block(index, previous_hash, timestamp, data, hash)
 
 class Blockchain:
@@ -45,16 +52,19 @@ class Blockchain:
 
     def proof_of_work(self, block):
         block.nonce = 0
-        computed_hash = calculate_hash(block.index, block.previous_hash, block.timestamp, block.data + str(block.nonce))
+        computed_hash = calculate_hash(block.index, block.previous_hash, block.timestamp, str(block.data) + str(block.nonce))
 
         while not computed_hash.startswith('0' * self.difficulty):
             block.nonce += 1
-            computed_hash = calculate_hash(block.index, block.previous_hash, block.timestamp, block.data + str(block.nonce))
+            computed_hash = calculate_hash(block.index, block.previous_hash, block.timestamp, str(block.data) + str(block.nonce))
 
         return computed_hash
 
     def add_message_to_blockchain(self, message):
         self.add_block(message)
+
+# Create the blockchain outside of the main application block
+blockchain = Blockchain()
 
 # Helper function to authenticate users
 def authenticate(username, password):
@@ -70,18 +80,19 @@ def authenticate_channel(username, password, channel_name):
 
     return False
 
-# Main landing page 
+# Main landing page
 @app.route('/')
 def homepage():
     return jsonify({'message': 'server is working'})
 
-# Get users in the account 
+# Get users in the account
 @app.route('/list_users')
 def user_list():
     return jsonify(users)
 
 # Get channel names
 @app.route('/list_channel')
+def list_channel():
     return jsonify(channels)
 
 # Endpoint for user registration
@@ -190,7 +201,10 @@ def send_message():
         if not authenticate_channel(username, password, channel_name):
             return jsonify({'error': 'Authentication failed or user not in the channel'}), 401
 
-        # Store the message
+        # Store the message in the blockchain
+        blockchain.add_message_to_blockchain({'username': username, 'channel_name': channel_name, 'content': content})
+
+        # Print the updated blockchain
         messages.append({'username': username, 'channel_name': channel_name, 'content': content})
 
         return jsonify({'message': 'Message sent successfully'}), 200
@@ -222,16 +236,4 @@ def get_messages():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
-    
-    blockchain = Blockchain()
-    for message in new_messages:
-        blockchain.add_message_to_blockchain(message)
-
-    # Print the updated blockchain
-    for block in blockchain.chain:
-        print(f"Index: {block.index}, Hash: {block.hash}, Previous Hash: {block.previous_hash}, Timestamp: {block.timestamp}, Data: {block.data}")
-
-
-
-
+    app.run(debug=True) 
