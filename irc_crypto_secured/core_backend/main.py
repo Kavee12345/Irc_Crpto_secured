@@ -2,8 +2,11 @@ from flask import Flask, request, jsonify
 import json
 import hashlib
 import time
+from flask import Flask, request, jsonify
+from flask_cors import CORS 
 
 app = Flask(__name__)
+CORS(app)
 
 # User and channel data
 users = []
@@ -104,7 +107,7 @@ def register():
         password = data.get('password')
 
         if not username or not password:
-            return jsonify({'error': 'Username and password are required'}), 400
+            return jsonify({'error': 'Username and password are required'}), 401
 
         # Check if the username is already taken
         if any(user['username'] == username for user in users):
@@ -146,7 +149,7 @@ def create_channel():
         channel_name = data.get('channel_name')
 
         if not channel_name:
-            return jsonify({'error': 'Channel name is required'}), 400
+            return jsonify({'error': 'Channel name is required'}), 401
 
         # Check if the channel name is already taken
         if any(channel['channel_name'] == channel_name for channel in channels):
@@ -166,6 +169,7 @@ def join_channel():
         data = request.json
         username = data.get('username')
         channel_name = data.get('channel_name')
+    
 
         if not username or not channel_name:
             return jsonify({'error': 'Username and channel name are required'}), 400
